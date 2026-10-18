@@ -56,6 +56,17 @@ begin
     input_write_addr <= unsigned(bus_addr(3 downto 2));
     input_write_data <= signed(bus_write_data(7 downto 0));
 
+    weight_write_en <= '1'
+        when bus_write_en = '1'
+        and bus_addr(31 downto 8) = x"400000"
+        and bus_addr(7 downto 6) = "01"
+        and bus_addr(1 downto 0) = "00"
+        else '0';
+
+        weight_write_addr <= unsigned(bus_addr(5 downto 2));
+
+        weight_write_data <= signed(bus_write_data(7 downto 0));
+
 
 
 end architecture;
