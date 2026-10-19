@@ -3,11 +3,11 @@ use ieee.std_logic_1164.all;
 
 entity soc_top is
     port(
-        clk           : in  std_logic;
-        reset         : in  std_logic;
+        clk            : in  std_logic;
+        reset          : in  std_logic;
 
-        mmio_activity : out std_logic;
-        pass_o        : out std_logic
+        activity_led_n : out std_logic;
+        pass_led_n     : out std_logic
     );
 end entity;
 
@@ -26,6 +26,9 @@ architecture rtl of soc_top is
     signal out1_ok : std_logic := '0';
     signal out2_ok : std_logic := '0';
     signal out3_ok : std_logic := '0';
+    signal reset_i : std_logic; --internal active hig reest seignal
+
+    
 
     component rv32i_core is
         port(
@@ -42,11 +45,12 @@ architecture rtl of soc_top is
     end component;
 
 begin
+    reset_i <= not reset;
 
     cpu_inst : rv32i_core
         port map(
             clk            => clk,
-            reset          => reset,
+            reset          => reset_i,
 
             bus_addr       => bus_addr,
             bus_write_data => bus_write_data,
@@ -59,7 +63,7 @@ begin
     nna_inst : entity work.nna_mmio_wrapper
         port map(
             clk            => clk,
-            reset          => reset,
+            reset          => reset_i,
 
             bus_addr       => bus_addr,
             bus_write_data => bus_write_data,
@@ -73,7 +77,7 @@ begin
         begin
             if rising_edge(clk) then
 
-                if reset = '1' then
+                if reset_i = '1' then
 
                     seen_done <= '0';
 
@@ -135,14 +139,14 @@ begin
         end process;
 
 
-        pass_o <= seen_done
-                and out0_ok
-                and out1_ok
-                and out2_ok
-                and out3_ok;
+        pass_led_n <= not (
+            seen_done
+            and out0_ok
+            and out1_ok
+            and out2_ok
+            and out3_ok
+        );
 
-        mmio_activity <= bus_hit;
-
-    mmio_activity <= bus_hit;
+        activity_led_n <= not bus_hit;
 
 end architecture;
