@@ -1,34 +1,42 @@
-package rv32i_types;
-    typedef enum logic [3:0] { //4 bits for each enum value
-        ALU_ADD,
-        ALU_SUB,
-        ALU_AND,
-        ALU_OR,
-        ALU_XOR,
-        ALU_SLL,
-        ALU_SRL,
-        ALU_SRA,
-        ALU_SLT,
-        ALU_SLTU
-    } alu_op_t;
+// If Zmmul and Xicrc share the same core extension hook, their
+// responses must be combined by an extension router/arbiter. Do not directly
+// drive the same core inputs from two modules.
 
-    typedef enum logic [2:0] {
-        IMM_I,
-        IMM_S,
-        IMM_B,
-        IMM_U,
-        IMM_J
-    } imm_type_t;
+module xicrc_accelerator_unit #(
+    parameter [15:0] POLY = 16'h1021
+) (
+    input  wire [31:0] ext_rs1_data,
+    input  wire [31:0] ext_rs2_data,
+    input  wire [6:0]  ext_funct7,
+    input  wire [2:0]  ext_funct3,
 
-    typedef enum logic [2:0] {
-        RES_ALU,
-        RES_MEM,
-        RES_PC4,
-        RES_IMM,
-        RES_CRC
-    } result_src_t;
+    output wire        ext_ready,
+    output wire [31:0] ext_result,
+    output wire        ext_writeback,
+    output wire        ext_illegal
+);
 
-endpackage
+    wire is_xicrc = (ext_funct7 == 7'b1000000);
+    wire valid_variant = (ext_funct3 == 3'b000) ||
+                         (ext_funct3 == 3'b001) ||
+                         (ext_funct3 == 3'b010);
 
+    wire [1:0] crc_sel = ext_funct3[1:0];
+    wire [15:0] crc_result;
 
-//import into modules using "import rv32i_types::*;", * means import all definitions from rv32i_types
+    xicrc_exec #(
+        .POLY(POLY)
+    ) u_xicrc_exec (
+        .rs1_data   (ext_rs1_data),
+        .rs2_data   (ext_rs2_data),
+        .crc_sel    (crc_sel),
+        .crc_result (crc_result)
+    );
+
+    assign ext_ready     = is_xicrc;
+    assign ext_writeback = is_xicrc && valid_variant;
+    assign ext_illegal   = is_xicrc && !valid_variant;
+    assign ext_result    = (is_xicrc && valid_variant) ?
+                           {16'h0000, crc_result} : 32'h0000_0000;
+
+endmodule
