@@ -1,29 +1,48 @@
-import rv32i_types::*;
-
-module rv32i_alu (
-    input logic [31:0] operand_a,
-    input logic [31:0] operand_b,
-    input alu_op_t alu_op,
-    output logic [31:0] result
+module rv32i_branch_unit (
+    input logic [31:0] rs1_data,
+    input logic [31:0] rs2_data,
+    input logic [2:0] funct3,
+    output logic branch_taken
 );
 
-//always_comb means this block describes a combinational logic
+//branch_taken = 1 => redirect the PC
+//branch_taken = 0 => continue with PC + 4
+
 always_comb begin
-    case(alu_op)
-        ALU_ADD: result = operand_a + operand_b;
-        ALU_SUB: result = operand_a - operand_b;
-        ALU_AND: result = operand_a & operand_b;
-        ALU_OR: result = operand_a | operand_b;
-        ALU_XOR: result = operand_a ^ operand_b;
-        ALU_SLL: result = operand_a << operand_b[4:0]; //But there’s one catch: for RV32, only the lower 5 bits of the shift amount matter.
-        ALU_SRL: result = operand_a >> operand_b[4:0]; //always fills from the left with 0
-        ALU_SRA: result = $signed(operand_a) >>> operand_b[4:0]; //fills from the left with the old sign bit
-        ALU_SLT: result = $signed(operand_a) < $signed(operand_b);
-        // Signed comparison: output 1 if operand_a < operand_b, otherwise 0.
-        ALU_SLTU: result = operand_a < operand_b;
-        // Unsigned comparison: output 1 if operand_a < operand_b, otherwise 0.
-        default: result = 32'b0;
+    branch_taken = 1'b0;
+    case(funct3)
+    3'b000: begin //Branch Equal
+        if (rs1_data == rs2_data)
+            branch_taken = 1'b1; 
+    end
+
+    3'b001: begin //Branch Not Equal
+        if (rs1_data != rs2_data)
+            branch_taken = 1'b1;
+    end
+
+    3'b100: begin //BLT
+        if ($signed(rs1_data) < $signed(rs2_data))
+            branch_taken = 1'b1;
+    end
+    
+    3'b101: begin //BGE
+         if ($signed(rs1_data) >= $signed(rs2_data))
+            branch_taken = 1'b1;
+    end
+
+    3'b110: begin      //BLTU
+        if (rs1_data < rs2_data)
+            branch_taken = 1'b1;
+    end
+
+    3'b111: begin      // BGEU
+        if (rs1_data >= rs2_data)
+            branch_taken = 1'b1;
+    end
+
+    default:;
+
     endcase
 end
-
 endmodule

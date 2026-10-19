@@ -1,199 +1,234 @@
 import rv32i_types::*;
 
-module rv32i_core (
-    input logic clk,
-    input logic reset,
-
-    //mmio ports
-    output logic [31:0] bus_addr,
-    output logic [31:0] bus_write_data,
-    output logic        bus_write_en,
-
-    input  logic [31:0] bus_read_data,
-    input  logic        bus_hit
+module rv32i_decoder(
+    //ports
+    input  logic [31:0] instruction,
+    output logic        reg_write,
+    output logic        alu_src,
+    output logic        mem_write,
+    output result_src_t result_src,
+    output logic        branch,
+    output logic        jump,
+    output logic        jalr,
+    output alu_op_t      alu_op,
+    output imm_type_t    imm_type,
+    output logic        alu_a_pc
+    //alu_a_pc = 0  means ALU A comes from rs1, otherwise ALU A comes from PC
 );
-    logic [31:0] pc;
-    logic [31:0] next_pc;
-    logic [31:0] pc_plus4;
-    logic [31:0] instruction;
+    //internal signals
+    logic [6:0] opcode;
+    logic [2:0] funct3;
+    logic [6:0] funct7;
 
-    logic [4:0]  rs1_addr;
-    logic [4:0]  rs2_addr;
-    logic [4:0]  rd_addr;
+    assign opcode = instruction[6:0];
+    assign funct3 = instruction[14:12];
+    assign funct7 = instruction[31:25];
 
-    logic [31:0] rs1_data;
-    logic [31:0] rs2_data;
-    logic [31:0] writeback_data;
+always_comb begin
+    reg_write  = 1'b0;
+    alu_src    = 1'b0;
+    mem_write  = 1'b0;
+    result_src = RES_ALU;
+    branch     = 1'b0;
+    jump       = 1'b0;
+    jalr       = 1'b0;
+    alu_op     = ALU_ADD;
+    imm_type   = IMM_I;
+    alu_a_pc = 1'b0;
+case (opcode)
+    7'b0110011: begin
+        // XiCRC custom instructions
+        if (funct7 == 7'b1000000) begin
 
-    logic [31:0] immediate;
+            alu_src    = 1'b0;
+            mem_write  = 1'b0;
+            branch     = 1'b0;
+            jump       = 1'b0;
+            jalr       = 1'b0;
 
-    logic [31:0] alu_a;
-    logic [31:0] alu_b;
-    logic [31:0] alu_result;
+            case (funct3)
 
-    logic [31:0] mem_read_data;
-    logic [31:0] dmem_read_data;
-    logic        dmem_write_en;
-    logic [31:0] crc_result;
-    logic        crc_ready;
-    logic        crc_writeback;
-    logic        crc_illegal;
+                3'b000,   // CRCB
+                3'b001,   // CRCH
+                3'b010: begin // CRCW
+                    reg_write  = 1'b1;
+                    result_src = RES_CRC;
+                end
 
-    logic        reg_write;
-    logic        alu_src;
-    logic        alu_a_pc;
-    logic        mem_write;
-    logic        branch;
-    logic        branch_taken;
-    logic        jump;
-    logic        jalr;
+                default: begin
+                    reg_write  = 1'b0;
+                    result_src = RES_ALU;
+                end
 
-    alu_op_t      alu_op;
-    imm_type_t    imm_type;
-    result_src_t  result_src;
+            endcase
 
-    //instantiating pc
-    rv32i_pc pc_unit (
-        .clk(clk),
-        .reset(reset),
-        .next_pc(next_pc),
-        .pc(pc)
-    );
+        end
 
-    //connect pc to imem
-    rv32i_imem imem (
-        .addr(pc),
-        .instruction(instruction)
-    );
+        // Normal RV32I R-type instructions
+        else begin
 
-    //instruction field extration for register addresses
-    assign rs1_addr = instruction[19:15];
-    assign rs2_addr = instruction[24:20];
-    assign rd_addr  = instruction[11:7];
+            reg_write  = 1'b1;
+            alu_src    = 1'b0;
+            mem_write  = 1'b0;
+            result_src = RES_ALU;
+            branch     = 1'b0;
+            jump       = 1'b0;
 
-    xicrc_accelerator_unit xicrc_unit (
-        .ext_rs1_data   (rs1_data),
-        .ext_rs2_data   (rs2_data),
-        .ext_funct7     (instruction[31:25]),
-        .ext_funct3     (instruction[14:12]),
+            case (funct3)
 
-        .ext_ready      (crc_ready),
-        .ext_result     (crc_result),
-        .ext_writeback  (crc_writeback),
-        .ext_illegal    (crc_illegal)
-    );
+                3'b000: begin
+                    if (funct7 == 7'b0100000)
+                        alu_op = ALU_SUB;
+                    else
+                        alu_op = ALU_ADD;
+                end
 
-    //instantiating decoder
-    rv32i_decoder decoder (
-        .instruction(instruction),
-        .reg_write(reg_write),
-        .alu_src(alu_src),
-        .alu_a_pc(alu_a_pc),
-        .mem_write(mem_write),
-        .result_src(result_src),
-        .branch(branch),
-        .jump(jump),
-        .jalr(jalr),
-        .alu_op(alu_op),
-        .imm_type(imm_type)
-    );
+                3'b111: alu_op = ALU_AND;
+                3'b110: alu_op = ALU_OR;
+                3'b100: alu_op = ALU_XOR;
+                3'b001: alu_op = ALU_SLL;
 
-    //reg file
-    rv32i_regfile regfile (
-    .clk(clk),
-    .write_en(reg_write), //connect the register file’s write_en input to the core’s reg_write signal.
-    .rs1_addr(rs1_addr),
-    .rs2_addr(rs2_addr),
-    .wr_addr(rd_addr),
-    .wr_data(writeback_data),
-    .rs1_data(rs1_data),
-    .rs2_data(rs2_data)
-    );
+                3'b101: begin
+                    if (funct7 == 7'b0100000)
+                        alu_op = ALU_SRA;
+                    else
+                        alu_op = ALU_SRL;
+                end
 
-    //immediate generator
-    rv32i_imme_gnrtr immgen (
-    .instruction(instruction),
-    .imm_type(imm_type),
-    .immediate(immediate)
-    );
+                3'b010: alu_op = ALU_SLT;
+                3'b011: alu_op = ALU_SLTU;
 
-    assign alu_a = alu_a_pc ? pc : rs1_data;
-    assign alu_b = alu_src ? immediate : rs2_data;
+                default: alu_op = ALU_ADD;
 
+            endcase
+        end
+    end
 
-    rv32i_alu alu (
-        .operand_a(alu_a),
-        .operand_b(alu_b),
-        .alu_op(alu_op),
-        .result(alu_result)
-    );
+    7'b0010011: begin   //Itype instructions
+        reg_write  = 1'b1;
+        alu_src    = 1'b1;
+        mem_write  = 1'b0;
+        result_src = RES_ALU;
+        branch     = 1'b0;
+        jump       = 1'b0;
+        imm_type   = IMM_I;
 
-    rv32i_branch_unit branch_unit (
-        .rs1_data(rs1_data),
-        .rs2_data(rs2_data),
+        case (funct3)
 
-        .funct3(instruction[14:12]),
+            3'b000: alu_op = ALU_ADD;    //ADDI
 
-        .branch_taken(branch_taken)
-    );
+            3'b010: alu_op = ALU_SLT;    // SLTI
 
-    assign bus_addr       = alu_result;
-    assign bus_write_data = rs2_data;
-    assign bus_write_en   = mem_write;
-    assign dmem_write_en = mem_write && !bus_hit;
-    rv32i_dmem dmem (
-        .clk(clk),
-        .mem_write(dmem_write_en),
+            3'b011: alu_op = ALU_SLTU;   // SLTIU
 
-        .addr(alu_result),
-        .write_data(rs2_data),
+            3'b100: alu_op = ALU_XOR;    // XORI
 
-        .read_data(dmem_read_data)
-    );
+            3'b110: alu_op = ALU_OR;     // ORI
 
-    assign mem_read_data = bus_hit ? bus_read_data : dmem_read_data;
-    assign pc_plus4 = pc + 32'd4;
+            3'b111: alu_op = ALU_AND;    // ANDI
 
-    always_comb begin
+            3'b001: alu_op = ALU_SLL;    // SLLI
 
-        case (result_src)
+            3'b101: begin
+                if (funct7 == 7'b0100000)
+                    alu_op = ALU_SRA;    //SRAI
+                else
+                    alu_op = ALU_SRL;    // SRLI
+            end
 
-            RES_ALU:
-                writeback_data = alu_result;
-
-            RES_MEM:
-                writeback_data = mem_read_data;
-
-            RES_PC4:
-                writeback_data = pc_plus4;
-
-            RES_IMM:
-                writeback_data = immediate;
-
-            RES_CRC:
-                writeback_data = crc_result;
-
-            default:
-                writeback_data = 32'd0;
+            default: alu_op = ALU_ADD;
 
         endcase
+    end
+
+    //Load
+    7'b000011: begin 
+        reg_write  = 1'b1;
+        alu_src    = 1'b1;
+        mem_write  = 1'b0;
+        result_src = RES_MEM;
+        branch     = 1'b0;
+        jump       = 1'b0;
+        imm_type   = IMM_I;
+        alu_op     = ALU_ADD;
+    end
+
+    //Store
+    7'b0100011: begin  
+        reg_write  = 1'b0;
+        alu_src    = 1'b1;
+        mem_write  = 1'b1;
+        result_src = RES_ALU;
+        branch     = 1'b0;
+        jump       = 1'b0;
+        imm_type   = IMM_S;
+        alu_op     = ALU_ADD;
+    end
+
+    //Branch
+    7'b1100011: begin 
+        reg_write = 1'b0;
+        mem_write = 1'b0;
+        branch    = 1'b1;
+        jump      = 1'b0;
+        imm_type  = IMM_B;
+    end
+
+    //JAL
+    7'b1101111: begin
+        reg_write  = 1'b1;
+        mem_write  = 1'b0;
+        result_src = RES_PC4;
+        branch     = 1'b0;
+        jump       = 1'b1;
+        imm_type   = IMM_J;
 
     end
 
- rv32i_next_pc next_pc_unit (
-        .pc(pc),
-        .immediate(immediate),
+    //JALR
+    7'b1100111: begin  
+        if (funct3 == 3'b000) begin
+        reg_write  = 1'b1;
+        alu_src    = 1'b1;
+        mem_write  = 1'b0;
+        result_src = RES_PC4;
+        branch     = 1'b0;
+        jump       = 1'b1;
+        imm_type   = IMM_I;
+        alu_op     = ALU_ADD;
+        jalr       = 1'b1;
+        end
+    end
 
-        .branch(branch),
-        .branch_taken(branch_taken),
+    //LUI
+    7'b0110111: begin 
+        reg_write  = 1;       
+        mem_write  = 0;      
+        result_src = RES_IMM;  //write the immediate directly
+        branch     = 0;
+        jump       = 0;
+        imm_type   = IMM_U;
+        //ALU is bypassed, output straight to wrtieback
+    end
 
-        .jump(jump),
-        .jalr(jalr),
+    //AUIPC
+    7'b0010111: begin 
+        reg_write  = 1'b1;
+        alu_a_pc   = 1'b1;   //alu A comes from pc    
+        alu_src    = 1'b1; //alu B = immeidate
+        alu_op     = ALU_ADD; 
+        result_src = RES_ALU;
+        imm_type   = IMM_U;
+        mem_write  = 1'b0;
+        branch     = 1'b0;
+        jump       = 1'b0;
+    end
 
-        .rs1_data(rs1_data),
+    //if the opcode is not 0110011, don’t enter the R-type decode block.
+    default: begin
+        // Keep safe defaults
 
-        .next_pc(next_pc)
-    );
-
+    end
+endcase
+end
 endmodule
-

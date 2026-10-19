@@ -1,21 +1,15 @@
-module rv32i_dmem #( //the # tells systemverilog “the following parentheses contain parameters, not normal ports.""
+module rv32i_imem #(
     parameter DEPTH = 256
 )(
-    input  logic        clk,
-    input  logic        mem_write,
-    input  logic [31:0] addr,
-    input  logic [31:0] write_data,
-    output logic [31:0] read_data
+    input logic [31:0] addr,
+    output logic [31:0] instruction
 );
 
-    logic [31:0] mem [0:DEPTH-1];
+    logic [31:0] mem [0:DEPTH-1]; //256 memory locations, 32 bits each
+    //mem is an array that stores all instructions inside imem
 
-    assign read_data = mem[addr[9:2]]; //whichever address comes in, immediately output the corresponding word.
-
-    always_ff @(posedge clk) begin
-    if (mem_write == 1'b1) begin
-        mem[addr[9:2]] <= write_data;
+    always_comb begin
+        instruction = mem[addr[9:2]]; //addr is address input into IMEM
     end
-    end 
 
 endmodule
