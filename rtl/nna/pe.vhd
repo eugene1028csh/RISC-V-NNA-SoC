@@ -21,6 +21,14 @@ end entity pe;
 architecture rtl of pe is
   signal a_reg : signed (7 downto 0);
   signal b_reg : signed (7 downto 0);
+
+  attribute syn_preserve : boolean;
+  attribute syn_preserve of a_reg : signal is true;
+  attribute syn_preserve of b_reg : signal is true;
+
+  attribute syn_allow_retiming : boolean;
+  attribute syn_allow_retiming of a_reg : signal is false;
+  attribute syn_allow_retiming of b_reg : signal is false;
 begin
   process (clk)
   begin
