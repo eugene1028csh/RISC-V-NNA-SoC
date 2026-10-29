@@ -56,7 +56,7 @@ architecture rtl of soc_top is
     end component;
 
 begin
-    reset_i <= reset;
+    reset_i <= not reset;
 
     cpu_inst : rv32i_core
         port map(
