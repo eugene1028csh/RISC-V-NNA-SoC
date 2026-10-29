@@ -258,7 +258,7 @@ module dmem_mbist #(
     always_comb begin
 
         // Defaults
-        mem_addr = {{(32-ADDR_WIDTH-2){1'b0}}, addr_counter, 2'b00}
+        mem_addr = {{(30-ADDR_WIDTH){1'b0}}, addr_counter, 2'b00};
         mem_wdata       = 32'h0000_0000;
         mem_we          = 1'b0;
 
