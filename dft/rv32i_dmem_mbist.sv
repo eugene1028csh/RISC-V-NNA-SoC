@@ -258,7 +258,7 @@ module dmem_mbist #(
     always_comb begin
 
         // Defaults
-        mem_addr        = {{(32-ADDR_WIDTH){1'b0}}, addr_counter};
+        mem_addr = {{(32-ADDR_WIDTH-2){1'b0}}, addr_counter, 2'b00}
         mem_wdata       = 32'h0000_0000;
         mem_we          = 1'b0;
 
@@ -392,7 +392,7 @@ module dmem_mbist #(
                     READ_0_FINAL: begin
                         if ((mem_rdata != 32'h0000_0000) && !fail) begin
                             fail      <= 1'b1;
-                            fail_addr <= {{(32-ADDR_WIDTH){1'b0}}, addr_counter};
+                            fail_addr <= {{(32-ADDR_WIDTH-2){1'b0}}, addr_counter, 2'b00};
                         end
                     end
 
@@ -400,7 +400,7 @@ module dmem_mbist #(
                     READ_1_DOWN: begin
                         if ((mem_rdata != 32'hFFFF_FFFF) && !fail) begin
                             fail      <= 1'b1;
-                            fail_addr <= {{(32-ADDR_WIDTH){1'b0}}, addr_counter};
+                            fail_addr <= {{(32-ADDR_WIDTH-2){1'b0}}, addr_counter, 2'b00};
                         end
                     end
 
@@ -409,7 +409,7 @@ module dmem_mbist #(
                     READ_AA_FINAL: begin
                         if ((mem_rdata != 32'hAAAA_AAAA) && !fail) begin
                             fail      <= 1'b1;
-                            fail_addr <= {{(32-ADDR_WIDTH){1'b0}}, addr_counter};
+                            fail_addr <= {{(32-ADDR_WIDTH-2){1'b0}}, addr_counter, 2'b00};
                         end
                     end
 
@@ -417,7 +417,7 @@ module dmem_mbist #(
                     READ_55_DOWN: begin
                         if ((mem_rdata != 32'h5555_5555) && !fail) begin
                             fail      <= 1'b1;
-                            fail_addr <= {{(32-ADDR_WIDTH){1'b0}}, addr_counter};
+                            fail_addr <= {{(32-ADDR_WIDTH-2){1'b0}}, addr_counter, 2'b00};
                         end
                     end
 
@@ -425,7 +425,7 @@ module dmem_mbist #(
                     LFSR_READ_UP: begin
                         if ((mem_rdata != lfsr_value) && !fail) begin
                             fail      <= 1'b1;
-                            fail_addr <= {{(32-ADDR_WIDTH){1'b0}}, addr_counter};
+                            fail_addr <= {{(32-ADDR_WIDTH-2){1'b0}}, addr_counter, 2'b00};
 
                         end else if ((addr_counter == LAST_ADDR) && !fail) begin
                             pass <= 1'b1;
