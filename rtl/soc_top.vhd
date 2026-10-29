@@ -287,12 +287,12 @@ begin
             and mbist_fail = '0'
             else '0';
         
-        led_n(0) <= not debug_value(0);
-        led_n(1) <= not debug_value(1);
-        led_n(2) <= not debug_value(2);
-        led_n(3) <= not debug_value(3);
-        led_n(4) <= not debug_value(4);
-        led_n(5) <= not debug_value(5);
+        led_n(0) <= not debug_value(6);
+        led_n(1) <= not debug_value(7);
+        led_n(2) <= not debug_value(8);
+        led_n(3) <= not debug_value(9);
+        led_n(4) <= not debug_value(10);
+        led_n(5) <= not debug_value(11);
 
 
 end architecture;
