@@ -45,6 +45,11 @@ module rv32i_core_mbist_boot_tb;
         forever #5 clk = ~clk;
     end
 
+    initial begin
+        $dumpfile("core_boot.vcd");
+        $dumpvars(0, rv32i_core_mbist_boot_tb);
+    end
+
 
     // ----------------------------
     // No MMIO peripheral response
@@ -75,6 +80,9 @@ module rv32i_core_mbist_boot_tb;
         // to actually release the CPU
         if (mbist_pass_o == 1'b1)
             wait (dut.cpu_enable == 1'b1);
+
+        // Let the CPU execute for a few cycles
+        repeat (6) @(posedge clk);
 
         #1;
 

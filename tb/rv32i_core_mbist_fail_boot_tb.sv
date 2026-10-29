@@ -45,6 +45,11 @@ module rv32i_core_mbist_fail_boot_tb;
         forever #5 clk = ~clk;
     end
 
+    initial begin
+        $dumpfile("core_fail_boot.vcd");
+        $dumpvars(0, rv32i_core_mbist_fail_boot_tb);
+    end
+
 
     // ----------------------------
     // No MMIO peripheral response
@@ -81,6 +86,8 @@ module rv32i_core_mbist_fail_boot_tb;
 
     // Let MBIST run all the way to completion
     wait (dut.mbist_done == 1'b1);
+
+    repeat (6) @(posedge clk);
 
     #1;
 
