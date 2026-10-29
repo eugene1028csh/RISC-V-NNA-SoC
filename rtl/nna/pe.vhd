@@ -38,15 +38,15 @@ begin
   end process;
 
   mac_unit : entity work.mac
-    port map
-    (
-      clk => clk,
-      reset => reset,
-      enable => enable,
-      a => a_in,
-      b => b_in,
-      result => result
-    );
+  port map
+  (
+    clk => clk,
+    reset => reset,
+    enable => enable,
+    a => a_reg,
+    b => b_reg,
+    result => result
+  );
   a_out <= a_reg;
   b_out <= b_reg;
 

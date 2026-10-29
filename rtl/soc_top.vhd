@@ -287,12 +287,12 @@ begin
             and mbist_fail = '0'
             else '0';
         
-        led_n(0) <= not debug_value(6);
-        led_n(1) <= not debug_value(7);
-        led_n(2) <= not debug_value(8);
-        led_n(3) <= not debug_value(9);
-        led_n(4) <= not debug_value(10);
-        led_n(5) <= not debug_value(11);
+        led_n(0) <= not (out_ok(0)  and out_ok(1)  and out_ok(2)  and out_ok(3));
+        led_n(1) <= not (out_ok(4)  and out_ok(5)  and out_ok(6)  and out_ok(7));
+        led_n(2) <= not (out_ok(8)  and out_ok(9)  and out_ok(10) and out_ok(11));
+        led_n(3) <= not (out_ok(12) and out_ok(13) and out_ok(14) and out_ok(15));
+        led_n(4) <= not seen_done;
+        led_n(5) <= not error_latched;
 
 
 end architecture;
