@@ -33,6 +33,8 @@ architecture rtl of soc_top is
     signal mbist_pass : std_logic;
     signal mbist_fail : std_logic;
 
+    signal debug_value : std_logic_vector(31 downto 0) := (others => '0');
+
 
     component rv32i_core is
         port(
@@ -127,6 +129,12 @@ begin
                     error_latched <= '0';
 
                 else
+
+                    if bus_hit = '1'
+                    and bus_write_en = '0'
+                    and bus_addr = x"400000EC" then
+                        debug_value <= bus_read_data;
+                    end if;
 
                     -- CPU read STATUS = DONE
                     if bus_hit = '1'
@@ -279,12 +287,12 @@ begin
             and mbist_fail = '0'
             else '0';
         
-        led_n(0) <= not system_pass;
-        led_n(1) <= not heartbeat_counter(23);
-        led_n(2) <= '0' when mmio_counter /= 0 else '1'; --assign 0 when mmiocounter is not 0, otherwise assign 1;
-        led_n(3) <= not seen_done;
-        led_n(4) <= not mbist_pass;
-        led_n(5) <= not (error_latched or mbist_fail);
+        led_n(0) <= not debug_value(0);
+        led_n(1) <= not debug_value(1);
+        led_n(2) <= not debug_value(2);
+        led_n(3) <= not debug_value(3);
+        led_n(4) <= not debug_value(4);
+        led_n(5) <= not debug_value(5);
 
 
 end architecture;
