@@ -199,6 +199,7 @@ begin
         --S_CLEAR         → PE accumulators reset before every new multiplication
       when S_CLEAR =>
         array_reset <= '1';
+        array_enable <= '1';
 
       when S_RUN =>
         array_enable <= '1';
