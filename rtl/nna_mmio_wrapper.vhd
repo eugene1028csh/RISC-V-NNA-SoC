@@ -19,7 +19,7 @@ end entity;
 
 architecture rtl of nna_mmio_wrapper is
     signal input_write_en   : std_logic;
-    signal input_write_addr : unsigned(1 downto 0);
+    signal input_write_addr : unsigned(3 downto 0);
     signal input_write_data : signed(7 downto 0);
 
     signal weight_write_en   : std_logic;
@@ -35,10 +35,10 @@ architecture rtl of nna_mmio_wrapper is
 
     signal done_sticky : std_logic := '0';
 
-    signal out0 : signed(31 downto 0);
-    signal out1 : signed(31 downto 0);
-    signal out2 : signed(31 downto 0);
-    signal out3 : signed(31 downto 0);
+    signal out0,  out1,  out2,  out3  : signed(31 downto 0);
+    signal out4,  out5,  out6,  out7  : signed(31 downto 0);
+    signal out8,  out9,  out10, out11 : signed(31 downto 0);
+    signal out12, out13, out14, out15 : signed(31 downto 0);
 begin
 
     bus_hit <= '1'
@@ -48,33 +48,50 @@ begin
 --bus_addr(31 downto 8) = 0x400000
 --bus_addr(7 downto 0)  = 0x10 
     input_write_en <= '1'
-        when bus_write_en = '1'
-        and bus_addr(31 downto 8) = x"400000"
-        and bus_addr(7 downto 4) = x"1"
-        and bus_addr(1 downto 0) = "00"
-        else '0';
-    input_write_addr <= unsigned(bus_addr(3 downto 2));
+    when bus_write_en = '1'
+    and bus_addr(31 downto 8) = x"400000"
+    and unsigned(bus_addr(7 downto 0)) >= to_unsigned(16#10#, 8)
+    and unsigned(bus_addr(7 downto 0)) <= to_unsigned(16#4C#, 8)
+    and bus_addr(1 downto 0) = "00"
+    else '0';
+
+    input_write_addr <=
+        resize(
+            unsigned(bus_addr(7 downto 2)) - to_unsigned(4, 6),
+            4
+        );
+
     input_write_data <= signed(bus_write_data(7 downto 0));
 
     weight_write_en <= '1'
-        when bus_write_en = '1'
-        and bus_addr(31 downto 8) = x"400000"
-        and bus_addr(7 downto 6) = "01" --tels us this is inside the weight range
-        and bus_addr(1 downto 0) = "00"
-        else '0';
+    when bus_write_en = '1'
+    and bus_addr(31 downto 8) = x"400000"
+    and unsigned(bus_addr(7 downto 0)) >= to_unsigned(16#50#, 8)
+    and unsigned(bus_addr(7 downto 0)) <= to_unsigned(16#8C#, 8)
+    and bus_addr(1 downto 0) = "00"
+    else '0';
 
-    weight_write_addr <= unsigned(bus_addr(5 downto 2)); --which weight
+    weight_write_addr <=
+        resize(
+            unsigned(bus_addr(7 downto 2)) - to_unsigned(20, 6),
+            4
+        );
 
-    weight_write_data <= signed(bus_write_data(7 downto 0)); --what valye
+    weight_write_data <= signed(bus_write_data(7 downto 0));
 
     bias_write_en <= '1'
-        when bus_write_en = '1'
-        and bus_addr(31 downto 8) = x"400000"
-        and bus_addr(7 downto 4) = x"8"
-        and bus_addr(1 downto 0) = "00"
-        else '0';
+    when bus_write_en = '1'
+    and bus_addr(31 downto 8) = x"400000"
+    and unsigned(bus_addr(7 downto 0)) >= to_unsigned(16#90#, 8)
+    and unsigned(bus_addr(7 downto 0)) <= to_unsigned(16#9C#, 8)
+    and bus_addr(1 downto 0) = "00"
+    else '0';
 
-    bias_write_addr <= unsigned(bus_addr(3 downto 2));
+    bias_write_addr <=
+        resize(
+            unsigned(bus_addr(7 downto 2)) - to_unsigned(36, 6),
+            2
+        );
 
     bias_write_data <= signed(bus_write_data);
 
@@ -104,21 +121,28 @@ begin
         bus_read_data <= (others => '0'); --if the CPU reads some unmapped NNA address, it gets 0
 
         case bus_addr is
-
             when x"40000004" =>
                 bus_read_data(0) <= done_sticky;
 
-            when x"400000C0" =>
-                bus_read_data <= std_logic_vector(out0);
+            when x"400000C0" => bus_read_data <= std_logic_vector(out0);
+            when x"400000C4" => bus_read_data <= std_logic_vector(out1);
+            when x"400000C8" => bus_read_data <= std_logic_vector(out2);
+            when x"400000CC" => bus_read_data <= std_logic_vector(out3);
 
-            when x"400000C4" =>
-                bus_read_data <= std_logic_vector(out1);
+            when x"400000D0" => bus_read_data <= std_logic_vector(out4);
+            when x"400000D4" => bus_read_data <= std_logic_vector(out5);
+            when x"400000D8" => bus_read_data <= std_logic_vector(out6);
+            when x"400000DC" => bus_read_data <= std_logic_vector(out7);
 
-            when x"400000C8" =>
-                bus_read_data <= std_logic_vector(out2);
+            when x"400000E0" => bus_read_data <= std_logic_vector(out8);
+            when x"400000E4" => bus_read_data <= std_logic_vector(out9);
+            when x"400000E8" => bus_read_data <= std_logic_vector(out10);
+            when x"400000EC" => bus_read_data <= std_logic_vector(out11);
 
-            when x"400000CC" =>
-                bus_read_data <= std_logic_vector(out3);
+            when x"400000F0" => bus_read_data <= std_logic_vector(out12);
+            when x"400000F4" => bus_read_data <= std_logic_vector(out13);
+            when x"400000F8" => bus_read_data <= std_logic_vector(out14);
+            when x"400000FC" => bus_read_data <= std_logic_vector(out15);
 
             when others =>
                 null;
@@ -146,10 +170,25 @@ begin
         start => nna_start,
         done  => nna_done,
 
-        out0 => out0,
-        out1 => out1,
-        out2 => out2,
-        out3 => out3
+        out0  => out0,
+        out1  => out1,
+        out2  => out2,
+        out3  => out3,
+
+        out4  => out4,
+        out5  => out5,
+        out6  => out6,
+        out7  => out7,
+
+        out8  => out8,
+        out9  => out9,
+        out10 => out10,
+        out11 => out11,
+
+        out12 => out12,
+        out13 => out13,
+        out14 => out14,
+        out15 => out15
     );
 
 
