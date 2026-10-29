@@ -10,7 +10,12 @@ module rv32i_core (
     output logic        bus_write_en,
 
     input  logic [31:0] bus_read_data,
-    input  logic        bus_hit
+    input  logic        bus_hit,
+    
+    // MBIST status
+    output logic        mbist_pass_o,
+    output logic        mbist_fail_o
+    
 );
     logic [31:0] pc;
     logic [31:0] next_pc;
@@ -172,7 +177,7 @@ module rv32i_core (
 
     assign bus_write_en =
         mem_write && cpu_enable;
-        
+
     rv32i_dmem dmem (
         .clk(clk),
         .mem_write(dmem_we_mux),
@@ -198,6 +203,9 @@ module rv32i_core (
     assign cpu_enable = mbist_boot_pass;
 
     assign cpu_reset = reset || !cpu_enable;
+
+    assign mbist_pass_o = mbist_pass;
+    assign mbist_fail_o = mbist_fail;
     dmem_mbist #(
         .ADDR_WIDTH(8)
     ) mbist_inst (

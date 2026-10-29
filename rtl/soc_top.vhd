@@ -34,6 +34,9 @@ architecture rtl of soc_top is
     signal system_pass : std_logic;
     signal error_latched : std_logic := '0';
 
+    signal mbist_pass : std_logic;
+    signal mbist_fail : std_logic;
+
 
     component rv32i_core is
         port(
@@ -45,7 +48,10 @@ architecture rtl of soc_top is
             bus_write_en   : out std_logic;
 
             bus_read_data  : in  std_logic_vector(31 downto 0);
-            bus_hit        : in  std_logic
+            bus_hit        : in  std_logic;
+
+            mbist_pass_o   : out std_logic;
+            mbist_fail_o   : out std_logic
         );
     end component;
 
@@ -62,7 +68,10 @@ begin
             bus_write_en   => bus_write_en,
 
             bus_read_data  => bus_read_data,
-            bus_hit        => bus_hit
+            bus_hit        => bus_hit,
+
+            mbist_pass_o   => mbist_pass,
+            mbist_fail_o   => mbist_fail
         );
 
     nna_inst : entity work.nna_mmio_wrapper
@@ -185,20 +194,22 @@ begin
         end process;
 
         system_pass <= (
-            seen_done
+            mbist_pass
+            and seen_done
             and out0_ok
             and out1_ok
             and out2_ok
             and out3_ok
             and not error_latched
+            and not mbist_fail
         );               
         
         led_n(0) <= not system_pass;
         led_n(1) <= not heartbeat_counter(23);
         led_n(2) <= '0' when mmio_counter /= 0 else '1'; --assign 0 when mmiocounter is not 0, otherwise assign 1;
         led_n(3) <= not seen_done;
-        led_n(4) <= '1';  -- MBIST not implemented yet
-        led_n(5) <= not error_latched;
+        led_n(4) <= not mbist_pass;
+        led_n(5) <= not (error_latched or mbist_fail);
 
 
 end architecture;
