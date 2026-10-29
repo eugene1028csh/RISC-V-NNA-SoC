@@ -46,7 +46,7 @@ architecture rtl of matmul_engine_4x4 is
   signal current_state : state_t := S_IDLE;
   signal next_state    : state_t := S_IDLE;
 
-  signal cycle_count : integer range 0 to 10 := 0; --tells the scheduler which skewed inputs to feed
+  signal cycle_count : integer range 0 to 12 := 0; --tells the scheduler which skewed inputs to feed
 
   signal array_a_in : row4_t;
   signal array_b_in : row4_t;
@@ -143,8 +143,8 @@ begin
           cycle_count <= 1;
 
         elsif current_state = S_RUN then
-          if cycle_count < 10 then
-            cycle_count <= cycle_count + 1;
+          if cycle_count < 12 then
+              cycle_count <= cycle_count + 1;
           end if;
 
         else
@@ -170,7 +170,7 @@ begin
         next_state <= S_RUN;
 
       when S_RUN =>
-        if cycle_count = 10 then
+        if cycle_count = 12 then
           next_state <= S_DONE;
         end if;
 
