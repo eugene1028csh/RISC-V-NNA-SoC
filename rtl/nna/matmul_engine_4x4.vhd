@@ -182,8 +182,6 @@ begin
 
   --scheduler + control outputs
   process (all)
-    variable index_a : integer;
-    variable index_b : integer;
   begin
     array_a_in <= (others => (others => '0'));
     array_b_in <= (others => (others => '0'));
@@ -205,25 +203,65 @@ begin
       when S_RUN =>
         array_enable <= '1';
 
-        -- Feed A rows
-        for row in 0 to 3 loop
-          index_a := cycle_count - 1 - row;
-          --calculates which element of that row should be injected this cycle
+        case cycle_count is
 
-          if index_a >= 0 and index_a <= 3 then
-            array_a_in(row)             <= a_reg(row)(index_a);
-          end if;
-        end loop;
+            when 1 =>
+                array_a_in(0) <= a_reg(0)(0);
 
-        -- Feed B columns
-        for col in 0 to 3 loop
-          index_b := cycle_count - 1 - col;
-          -- calculates which element of that column should be injected this cyclee
+                array_b_in(0) <= b_reg(0)(0);
 
-          if index_b >= 0 and index_b <= 3 then
-            array_b_in(col)             <= b_reg(index_b)(col);
-          end if;
-        end loop;
+            when 2 =>
+                array_a_in(0) <= a_reg(0)(1);
+                array_a_in(1) <= a_reg(1)(0);
+
+                array_b_in(0) <= b_reg(1)(0);
+                array_b_in(1) <= b_reg(0)(1);
+
+            when 3 =>
+                array_a_in(0) <= a_reg(0)(2);
+                array_a_in(1) <= a_reg(1)(1);
+                array_a_in(2) <= a_reg(2)(0);
+
+                array_b_in(0) <= b_reg(2)(0);
+                array_b_in(1) <= b_reg(1)(1);
+                array_b_in(2) <= b_reg(0)(2);
+
+            when 4 =>
+                array_a_in(0) <= a_reg(0)(3);
+                array_a_in(1) <= a_reg(1)(2);
+                array_a_in(2) <= a_reg(2)(1);
+                array_a_in(3) <= a_reg(3)(0);
+
+                array_b_in(0) <= b_reg(3)(0);
+                array_b_in(1) <= b_reg(2)(1);
+                array_b_in(2) <= b_reg(1)(2);
+                array_b_in(3) <= b_reg(0)(3);
+
+            when 5 =>
+                array_a_in(1) <= a_reg(1)(3);
+                array_a_in(2) <= a_reg(2)(2);
+                array_a_in(3) <= a_reg(3)(1);
+
+                array_b_in(1) <= b_reg(3)(1);
+                array_b_in(2) <= b_reg(2)(2);
+                array_b_in(3) <= b_reg(1)(3);
+
+            when 6 =>
+                array_a_in(2) <= a_reg(2)(3);
+                array_a_in(3) <= a_reg(3)(2);
+
+                array_b_in(2) <= b_reg(3)(2);
+                array_b_in(3) <= b_reg(2)(3);
+
+            when 7 =>
+                array_a_in(3) <= a_reg(3)(3);
+
+                array_b_in(3) <= b_reg(3)(3);
+
+            when others =>
+                null;
+
+        end case;
 
       when S_DONE =>
         done <= '1';

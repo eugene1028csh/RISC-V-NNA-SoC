@@ -43,8 +43,8 @@ begin
     clk => clk,
     reset => reset,
     enable => enable,
-    a => a_reg,
-    b => b_reg,
+    a => a_in,
+    b => b_in,
     result => result
   );
   a_out <= a_reg;
