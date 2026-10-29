@@ -21,11 +21,7 @@ architecture rtl of soc_top is
     signal bus_hit        : std_logic;
 
     signal seen_done : std_logic := '0';
-
-    signal out0_ok : std_logic := '0';
-    signal out1_ok : std_logic := '0';
-    signal out2_ok : std_logic := '0';
-    signal out3_ok : std_logic := '0';
+    signal out_ok : std_logic_vector(15 downto 0) := (others => '0');
     signal reset_i : std_logic; --internal active high reest seignal
 
     signal heartbeat_counter : unsigned(23 downto 0) := (others => '0');
@@ -126,10 +122,7 @@ begin
 
                     seen_done <= '0';
 
-                    out0_ok <= '0';
-                    out1_ok <= '0';
-                    out2_ok <= '0';
-                    out3_ok <= '0';
+                    out_ok <= (others => '0');
 
                     error_latched <= '0';
 
@@ -151,32 +144,118 @@ begin
                     and bus_hit = '1'
                     and bus_write_en = '0' then
 
-                        case bus_addr is
-
+                       case bus_addr is
                             when x"400000C0" =>
-                                if bus_read_data = x"00000000" then
-                                    out0_ok <= '1';
+                                if bus_read_data = x"00000050" then -- 80
+                                    out_ok(0) <= '1';
                                 else
                                     error_latched <= '1';
                                 end if;
 
                             when x"400000C4" =>
-                                if bus_read_data = x"0000000A" then
-                                    out1_ok <= '1';
+                                if bus_read_data = x"00000046" then -- 70
+                                    out_ok(1) <= '1';
                                 else
                                     error_latched <= '1';
                                 end if;
 
                             when x"400000C8" =>
-                                if bus_read_data = x"00000073" then
-                                    out2_ok <= '1';
+                                if bus_read_data = x"0000003C" then -- 60
+                                    out_ok(2) <= '1';
                                 else
                                     error_latched <= '1';
                                 end if;
 
                             when x"400000CC" =>
-                                if bus_read_data = x"00000000" then
-                                    out3_ok <= '1';
+                                if bus_read_data = x"00000032" then -- 50
+                                    out_ok(3) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+
+                            when x"400000D0" =>
+                                if bus_read_data = x"000000F0" then -- 240
+                                    out_ok(4) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+                            when x"400000D4" =>
+                                if bus_read_data = x"000000D6" then -- 214
+                                    out_ok(5) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+                            when x"400000D8" =>
+                                if bus_read_data = x"000000BC" then -- 188
+                                    out_ok(6) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+                            when x"400000DC" =>
+                                if bus_read_data = x"000000A2" then -- 162
+                                    out_ok(7) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+
+                            when x"400000E0" =>
+                                if bus_read_data = x"00000190" then -- 400
+                                    out_ok(8) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+                            when x"400000E4" =>
+                                if bus_read_data = x"00000166" then -- 358
+                                    out_ok(9) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+                            when x"400000E8" =>
+                                if bus_read_data = x"0000013C" then -- 316
+                                    out_ok(10) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+                            when x"400000EC" =>
+                                if bus_read_data = x"00000112" then -- 274
+                                    out_ok(11) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+
+                            when x"400000F0" =>
+                                if bus_read_data = x"00000230" then -- 560
+                                    out_ok(12) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+                            when x"400000F4" =>
+                                if bus_read_data = x"000001F6" then -- 502
+                                    out_ok(13) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+                            when x"400000F8" =>
+                                if bus_read_data = x"000001BC" then -- 444
+                                    out_ok(14) <= '1';
+                                else
+                                    error_latched <= '1';
+                                end if;
+
+                            when x"400000FC" =>
+                                if bus_read_data = x"00000182" then -- 386
+                                    out_ok(15) <= '1';
                                 else
                                     error_latched <= '1';
                                 end if;
@@ -185,7 +264,6 @@ begin
                                 null;
 
                         end case;
-
                     end if;
 
                 end if;
@@ -193,16 +271,13 @@ begin
             end if;
         end process;
 
-        system_pass <= (
-            mbist_pass
-            and seen_done
-            and out0_ok
-            and out1_ok
-            and out2_ok
-            and out3_ok
-            and not error_latched
-            and not mbist_fail
-        );               
+       system_pass <= '1'
+            when mbist_pass = '1'
+            and seen_done = '1'
+            and out_ok = x"FFFF"
+            and error_latched = '0'
+            and mbist_fail = '0'
+            else '0';
         
         led_n(0) <= not system_pass;
         led_n(1) <= not heartbeat_counter(23);

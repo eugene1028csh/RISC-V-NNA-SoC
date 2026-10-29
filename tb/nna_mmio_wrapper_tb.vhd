@@ -52,61 +52,111 @@ begin
     
         
     stimulus : process
+        type int_array16_t is array (0 to 15) of integer;
+
+        -- Matrix A, row-major:
+        -- [ 1  2  3  4 ]
+        -- [ 5  6  7  8 ]
+        -- [ 9 10 11 12 ]
+        -- [13 14 15 16 ]
+        constant A_DATA : int_array16_t :=
+            (1, 2, 3, 4,
+            5, 6, 7, 8,
+            9, 10, 11, 12,
+            13, 14, 15, 16);
+
+        -- Matrix B, row-major:
+        -- [16 15 14 13]
+        -- [12 11 10  9]
+        -- [ 8  7  6  5]
+        -- [ 4  3  2  1]
+        constant B_DATA : int_array16_t :=
+            (16, 15, 14, 13,
+            12, 11, 10, 9,
+            8, 7, 6, 5,
+            4, 3, 2, 1);
+
+        -- Expected A × B:
+        -- [ 80  70  60  50]
+        -- [240 214 188 162]
+        -- [400 358 316 274]
+        -- [560 502 444 386]
+        constant EXPECTED : int_array16_t :=
+            (80, 70, 60, 50,
+            240, 214, 188, 162,
+            400, 358, 316, 274,
+            560, 502, 444, 386);
+
     begin
+        -- Reset
         reset <= '1';
         wait until rising_edge(clk);
         wait until rising_edge(clk);
         reset <= '0';
 
-        --inputs
-        mmio_write(clk, bus_addr, bus_write_data, bus_write_en,
-           x"40000010", x"00000001");
-
-        mmio_write(clk, bus_addr, bus_write_data, bus_write_en,
-                x"40000014", x"00000002");
-
-        mmio_write(clk, bus_addr, bus_write_data, bus_write_en,
-                x"40000018", x"00000003");
-
-        mmio_write(clk, bus_addr, bus_write_data, bus_write_en,
-                x"4000001C", x"00000004");
-
+        ----------------------------------------------------------------
+        -- Matrix B -> INPUT region 0x40000010 - 0x4000004C
+        ----------------------------------------------------------------
         for i in 0 to 15 loop
             mmio_write(
                 clk,
                 bus_addr,
                 bus_write_data,
                 bus_write_en,
-                std_logic_vector(to_unsigned(16#40000040# + (i * 4), 32)), --vhdl syntax for the number 40000040, written in base 16.
-                std_logic_vector(to_signed(i + 1, 32))
+                std_logic_vector(
+                    to_unsigned(16#40000010# + (i * 4), 32)
+                ),
+                std_logic_vector(to_signed(B_DATA(i), 32))
             );
         end loop;
 
-        --bias
-        mmio_write(clk, bus_addr, bus_write_data, bus_write_en,
-           x"40000080", std_logic_vector(to_signed(-40, 32))); --BIAS0 = -40
+        ----------------------------------------------------------------
+        -- Matrix A -> WEIGHT region 0x40000050 - 0x4000008C
+        ----------------------------------------------------------------
+        for i in 0 to 15 loop
+            mmio_write(
+                clk,
+                bus_addr,
+                bus_write_data,
+                bus_write_en,
+                std_logic_vector(
+                    to_unsigned(16#40000050# + (i * 4), 32)
+                ),
+                std_logic_vector(to_signed(A_DATA(i), 32))
+            );
+        end loop;
 
-        mmio_write(clk, bus_addr, bus_write_data, bus_write_en,
-                x"40000084", std_logic_vector(to_signed(-60, 32))); --BIAS1 = -60
+        ----------------------------------------------------------------
+        -- Biases = 0
+        ----------------------------------------------------------------
+        for i in 0 to 3 loop
+            mmio_write(
+                clk,
+                bus_addr,
+                bus_write_data,
+                bus_write_en,
+                std_logic_vector(
+                    to_unsigned(16#40000090# + (i * 4), 32)
+                ),
+                x"00000000"
+            );
+        end loop;
 
-        mmio_write(clk, bus_addr, bus_write_data, bus_write_en,
-                x"40000088", std_logic_vector(to_signed(5, 32))); 
-
-        mmio_write(clk, bus_addr, bus_write_data, bus_write_en,
-                x"4000008C", std_logic_vector(to_signed(-200, 32)));
-
-        -- START NNA
+        ----------------------------------------------------------------
+        -- START
+        ----------------------------------------------------------------
         mmio_write(
             clk,
             bus_addr,
             bus_write_data,
             bus_write_en,
-            x"40000000", --CONTROL register addr
-            x"00000001" --START bit = 1, wrapper generates nna_start = 1
+            x"40000000",
+            x"00000001"
         );
-        
-        --poll status register
-        --checking the same status register repeatedly until some condition becomes true
+
+        ----------------------------------------------------------------
+        -- Poll STATUS
+        ----------------------------------------------------------------
         loop
             bus_addr <= x"40000004";
 
@@ -116,46 +166,30 @@ begin
             exit when bus_read_data(0) = '1';
         end loop;
 
-        -- Read OUT0
-        bus_addr <= x"400000C0";
-        wait for 1 ns;
+        ----------------------------------------------------------------
+        -- Read + verify all 16 outputs
+        -- 0xC0, C4 ... FC
+        ----------------------------------------------------------------
+        for i in 0 to 15 loop
+            bus_addr <= std_logic_vector(
+                to_unsigned(16#400000C0# + (i * 4), 32)
+            );
 
-        assert signed(bus_read_data) = to_signed(0, 32)
-            report "OUT0 incorrect"
-            severity error;
+            wait for 1 ns;
 
+            assert signed(bus_read_data) = to_signed(EXPECTED(i), 32)
+                report
+                    "OUTPUT " & integer'image(i) &
+                    " incorrect. Expected " &
+                    integer'image(EXPECTED(i)) &
+                    ", got " &
+                    integer'image(to_integer(signed(bus_read_data)))
+                severity error;
+        end loop;
 
-        -- Read OUT1
-        bus_addr <= x"400000C4";
-        wait for 1 ns;
-
-        assert signed(bus_read_data) = to_signed(10, 32)
-            report "OUT1 incorrect"
-            severity error;
-
-
-        -- Read OUT2
-        bus_addr <= x"400000C8";
-        wait for 1 ns;
-
-        assert signed(bus_read_data) = to_signed(115, 32)
-            report "OUT2 incorrect"
-            severity error;
-
-
-        -- Read OUT3
-        bus_addr <= x"400000CC";
-        wait for 1 ns;
-
-        assert signed(bus_read_data) = to_signed(0, 32)
-            report "OUT3 incorrect"
-            severity error;
-
-
-        report "PASS: NNA MMIO wrapper test"
+        report "PASS: 16-PE NNA MMIO matrix-matrix test"
             severity note;
 
-        wait;
         wait;
     end process;
 
