@@ -9,7 +9,7 @@ module rv32i_dmem #( //the # tells systemverilog “the following parentheses co
 
     //BISR repair interface
     input logic     repair_valid,
-    input logic [$clog2(DEPTH)-1 : 0] repair_addr,
+    input logic [$clog2(DEPTH)-1 : 0] repair_addr
     //$clog2 means ceiling of log base 2, 
     // -> means “How many bits do I need to represent 256 different addresses?”
     // since we have 256 addresses, 2^8 is 256, hence $clog2(256) is 8
