@@ -48,19 +48,13 @@ module dmem_mbist_fault_tb;
     );
 
 
-    // ----------------------------
-    // Clock
-    // ----------------------------
-
+    // clk
     initial begin
         clk = 1'b0;
         forever #5 clk = ~clk;
     end
 
-
-    // ----------------------------
-    // Memory model
-    // ----------------------------
+    //memory model
 
     assign mem_rdata = mem[mem_addr[9:2]];
 
@@ -81,10 +75,7 @@ module dmem_mbist_fault_tb;
         end
     end
 
-
-    // ----------------------------
-    // Test sequence
-    // ----------------------------
+    //test sequence
 
     initial begin
 

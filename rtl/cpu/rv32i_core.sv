@@ -264,12 +264,12 @@ module rv32i_core (
             //firts MBISt failure
             //allocates 1 spare and reruns mbist when fail
             else if (mbist_done && mbist_fail && !repair_attempted) begin
-                repair_addr <= mbist_fail_addr[9:2]
+                repair_addr <= mbist_fail_addr[9:2];
                 repair_valid <= 1'b1;
                 repair_attempted <= 1'b1;
 
                 //run mbist agin through rpaired mapping
-                mbist_starts <= 1'b1;
+                mbist_start <= 1'b1;
             end
 
             //if retest fails, no more spares left
