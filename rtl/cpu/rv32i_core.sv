@@ -185,7 +185,11 @@ module rv32i_core (
         .addr(dmem_addr_mux),
         .write_data(dmem_wdata_mux),
 
-        .read_data(dmem_read_data)
+        .read_data(dmem_read_data),
+
+        .repair_addr('0),
+
+        .repair_valid(1'b0)
     );
 
     assign cpu_dmem_addr  = alu_result;
