@@ -73,6 +73,10 @@ module rv32i_core (
     logic        mbist_fail;
     logic [31:0] mbist_fail_addr;
 
+    logic       repair_valid; //spare mapping is active
+    logic [7:0] repair_addr; //which logical word gets redirected
+    logic       repair_attempted; //we've already consumed our one spare
+
     // Actual signals entering physical DMEM
     logic [31:0] dmem_addr_mux;
     logic [31:0] dmem_wdata_mux;
@@ -187,9 +191,8 @@ module rv32i_core (
 
         .read_data(dmem_read_data),
 
-        .repair_addr('0),
-
-        .repair_valid(1'b0)
+        .repair_addr  (repair_addr),
+        .repair_valid (repair_valid)
     );
 
     assign cpu_dmem_addr  = alu_result;
@@ -228,6 +231,8 @@ module rv32i_core (
         .mem_rdata (dmem_read_data),
 
         .fail_addr (mbist_fail_addr)
+
+        
     );
 
     always_ff @(posedge clk) begin
@@ -236,12 +241,16 @@ module rv32i_core (
             mbist_started   <= 1'b0;
             mbist_boot_pass <= 1'b0;
 
+            repair_valid     <= 1'b0;
+            repair_addr      <= '0;
+            repair_attempted <= 1'b0;
+
         end else begin
 
             // Default: START is only a one-clock pulse
             mbist_start <= 1'b0;
 
-            // Launch MBIST once after reset
+            // Initial POR
             if (!mbist_started) begin
                 mbist_start   <= 1'b1;
                 mbist_started <= 1'b1;
@@ -251,6 +260,21 @@ module rv32i_core (
             if (mbist_done && mbist_pass) begin
                 mbist_boot_pass <= 1'b1;
             end
+
+            //firts MBISt failure
+            //allocates 1 spare and reruns mbist when fail
+            else if (mbist_done && mbist_fail && !repair_attempted) begin
+                repair_addr <= mbist_fail_addr[9:2]
+                repair_valid <= 1'b1;
+                repair_attempted <= 1'b1;
+
+                //run mbist agin through rpaired mapping
+                mbist_starts <= 1'b1;
+            end
+
+            //if retest fails, no more spares left
+            else if (mbist_done && mbist_fail && repair_attempted)
+                mbist_boot_pass <= 1'b0;
         end
     end
 
