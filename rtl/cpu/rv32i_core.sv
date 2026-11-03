@@ -45,6 +45,8 @@ module rv32i_core (
     logic        alu_lbist_pass;
     logic        alu_lbist_fail;
     logic [31:0] alu_lbist_signature;
+    logic alu_lbist_started;
+    logic alu_lbist_boot_pass;
 
     logic [31:0] mem_read_data;
     logic [31:0] dmem_read_data;
@@ -166,8 +168,8 @@ module rv32i_core (
     assign alu_a = alu_a_pc ? pc : rs1_data;
     assign alu_b = alu_src ? immediate : rs2_data;
     assign alu_lbist_mode  = alu_lbist_busy;
-    assign alu_lbist_start = 1'b0; // Temporary
-    
+    assign alu_lbist_start = mbist_boot_pass && !alu_lbist_started;
+
     rv32i_alu alu (
         .operand_a(alu_lbist_mode ? alu_lbist_a : alu_a),
         .operand_b(alu_lbist_mode ? alu_lbist_b : alu_b),
@@ -243,7 +245,7 @@ module rv32i_core (
     assign dmem_we_mux =
         mbist_busy ? mbist_mem_we : cpu_dmem_we;
 
-    assign cpu_enable = mbist_boot_pass;
+    assign cpu_enable = mbist_boot_pass && alu_lbist_boot_pass;
 
     assign cpu_reset = reset || !cpu_enable;
 
@@ -311,6 +313,20 @@ module rv32i_core (
             //if retest fails, no more spares left
             else if (mbist_done && mbist_fail && repair_attempted)
                 mbist_boot_pass <= 1'b0;
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (reset) begin
+            alu_lbist_started   <= 1'b0;
+            alu_lbist_boot_pass <= 1'b0;
+        end
+        else begin
+            if (alu_lbist_start)
+                alu_lbist_started <= 1'b1;
+
+            if (alu_lbist_done && alu_lbist_pass)
+                alu_lbist_boot_pass <= 1'b1;
         end
     end
 
