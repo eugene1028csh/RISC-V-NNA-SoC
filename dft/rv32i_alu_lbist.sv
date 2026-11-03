@@ -6,6 +6,9 @@ parameter logic [31:0] GOLDEN_SIGNATURE = 32'h6A86_A2B4)
     input  logic clk,
     input  logic reset,
     input  logic start,
+    input  logic inject_fault,
+    input logic [4:0] fault_bit,
+    input logic fault_stuck_at,
 
     output logic busy,
     output logic done,
@@ -22,6 +25,8 @@ logic accepted_start;
 logic [31:0] operand_a;
 logic [31:0] operand_b;
 logic [31:0] alu_result;
+logic [31:0] misr_data;
+
 
 alu_op_t alu_op;
 
@@ -45,6 +50,15 @@ assign operand_b = {
     lfsr_value[31:16]
 };
 
+assign misr_data =
+    inject_fault
+    ? (
+        fault_stuck_at
+        ? (alu_result | (32'h1 << fault_bit))
+        : (alu_result & ~(32'h1 << fault_bit))
+      )
+    : alu_result;
+
 rv32i_alu alu_dut (
     .operand_a (operand_a),
     .operand_b (operand_b),
@@ -57,7 +71,7 @@ misr32 response_compactor (
     .reset     (reset),
     .enable    (busy),
     .clear     (accepted_start),
-    .data_in   (alu_result),
+    .data_in   (misr_data),
     .signature (signature)
 );
 
