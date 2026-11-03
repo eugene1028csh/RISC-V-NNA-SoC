@@ -34,7 +34,8 @@ rv32i_xicrc_lbist dut (
     .signature (signature),
     .inject_fault    (inject_fault),
     .fault_bit       (fault_bit),
-    .fault_stuck_at  (fault_stuck_at)
+    .fault_stuck_at  (fault_stuck_at),
+    .external_crc_result (16'd0)
 );
 
 // Count responses captured by MISR

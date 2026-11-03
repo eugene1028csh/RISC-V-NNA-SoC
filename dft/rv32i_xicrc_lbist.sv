@@ -1,4 +1,6 @@
-module rv32i_xicrc_lbist (
+module rv32i_xicrc_lbist #(
+    parameter bit USE_EXTERNAL_CRC = 1'b0
+) (
     input  logic clk,
     input  logic reset,
     input  logic start,
@@ -6,13 +8,17 @@ module rv32i_xicrc_lbist (
     input logic inject_fault,
     input logic [3:0] fault_bit,
     input logic fault_stuck_at,
+    input logic [15:0] external_crc_result,
 
     output logic busy,
     output logic done,
     output logic pass,
     output logic fail,
 
-    output logic [31:0] signature
+    output logic [31:0] signature,
+    output logic [31:0] test_rs1_data,
+    output logic [31:0] test_rs2_data,
+    output logic [1:0]  test_crc_sel
 );
 
 localparam logic [31:0] GOLDEN_SIGNATURE = 32'h561D52A3;
@@ -29,6 +35,7 @@ logic [1:0] op_counter;
 logic accepted_start;
 logic check_pending;
 logic [15:0] misr_data;
+logic [15:0] internal_crc_result;
 
 
 assign rs1_data = lfsr_value;
@@ -51,8 +58,16 @@ xicrc_exec crc_dut (
     .rs1_data   (rs1_data),
     .rs2_data   (rs2_data),
     .crc_sel    (crc_sel),
-    .crc_result (crc_result)
+    .crc_result (internal_crc_result)
 );
+
+assign test_rs1_data = rs1_data;
+assign test_rs2_data = rs2_data;
+assign test_crc_sel  = crc_sel;
+
+assign crc_result = USE_EXTERNAL_CRC
+                  ? external_crc_result
+                  : internal_crc_result;
 
 assign misr_data =
     inject_fault

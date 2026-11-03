@@ -60,7 +60,27 @@ initial begin
 
     $display("ALU LBIST PASSED");
 
-    // Stage 3: CPU release
+   // Stage 3: XiCRC LBIST
+    wait(dut.crc_lbist_busy == 1'b1);
+    $display("XiCRC LBIST STARTED");
+
+    if (dut.cpu_enable !== 1'b0 || dut.pc !== 32'd0)
+        $fatal(1, "CPU enabled before XiCRC LBIST completed");
+
+    wait(dut.crc_lbist_done == 1'b1);
+    #1;
+
+    $display("XiCRC SIGNATURE = %h",
+            dut.crc_lbist_signature);
+
+    if (dut.crc_lbist_pass !== 1'b1 ||
+        dut.crc_lbist_fail !== 1'b0 ||
+        dut.crc_lbist_signature !== 32'h561D52A3)
+        $fatal(1, "CPU XiCRC LBIST FAILED");
+
+    $display("XiCRC LBIST PASSED");
+
+    // Stage 4: CPU release
     repeat (2) @(negedge clk);
 
     if (dut.cpu_enable !== 1'b1)
