@@ -64,7 +64,7 @@ module rv32i_alu_lbist_tb;
             carry_activation_count <= 0;
         else if (busy &&
                 dut.op_counter == 4'd0 &&
-                dut.alu_dut.add_low[4] === 1'b1)
+                dut.alu_dut.add_low[4] === 1'b0)
             carry_activation_count <= carry_activation_count + 1;
     end
         
@@ -121,7 +121,7 @@ module rv32i_alu_lbist_tb;
         // Internal carry stuck-at-0 fault test
         @(negedge clk);
         inject_fault = 1'b0;
-        force dut.alu_dut.carry_into_bit4 = 1'b0;
+        force dut.alu_dut.carry_into_bit4 = 1'b1;
         //This tells the simulator to override the carry signal and hold it at zero, 
         //regardless of what the lower adder calculates.
 
@@ -133,7 +133,7 @@ module rv32i_alu_lbist_tb;
         wait (done == 1'b1);
         #1;
 
-        $display("CARRY SA0 SIGNATURE = %h", signature);
+        $display("CARRY SA1 SIGNATURE = %h", signature);
         $display("PASS = %b, FAIL = %b", pass, fail);
 
         $display("CARRY ACTIVATIONS = %0d", carry_activation_count);
@@ -146,7 +146,7 @@ module rv32i_alu_lbist_tb;
 
         if ($isunknown(signature))
             $fatal(1, "Carry test produced unknown MISR signature");
-            
+
         if (signature === 32'h6A86_A2B4)
             $fatal(1, "Carry fault not detected");
 
