@@ -35,6 +35,16 @@ module rv32i_core (
     logic [31:0] alu_a;
     logic [31:0] alu_b;
     logic [31:0] alu_result;
+    logic        alu_lbist_mode;
+    logic [31:0] alu_lbist_a;
+    logic [31:0] alu_lbist_b;
+    alu_op_t     alu_lbist_op;
+    logic        alu_lbist_start;
+    logic        alu_lbist_busy;
+    logic        alu_lbist_done;
+    logic        alu_lbist_pass;
+    logic        alu_lbist_fail;
+    logic [31:0] alu_lbist_signature;
 
     logic [31:0] mem_read_data;
     logic [31:0] dmem_read_data;
@@ -155,13 +165,39 @@ module rv32i_core (
 
     assign alu_a = alu_a_pc ? pc : rs1_data;
     assign alu_b = alu_src ? immediate : rs2_data;
-
-
+    assign alu_lbist_mode  = alu_lbist_busy;
+    assign alu_lbist_start = 1'b0; // Temporary
+    
     rv32i_alu alu (
-        .operand_a(alu_a),
-        .operand_b(alu_b),
-        .alu_op(alu_op),
-        .result(alu_result)
+        .operand_a(alu_lbist_mode ? alu_lbist_a : alu_a),
+        .operand_b(alu_lbist_mode ? alu_lbist_b : alu_b),
+        .alu_op   (alu_lbist_mode ? alu_lbist_op : alu_op),
+        .result   (alu_result)
+    );
+
+    rv32i_alu_lbist #(
+        .USE_EXTERNAL_ALU(1'b1)
+    ) alu_lbist_inst (
+        .clk                 (clk),
+        .reset               (reset),
+        .start               (alu_lbist_start),
+
+        .inject_fault        (1'b0),
+        .fault_bit           (5'd0),
+        .fault_stuck_at      (1'b0),
+
+        .external_alu_result (alu_result),
+
+        .busy                (alu_lbist_busy),
+        .done                (alu_lbist_done),
+        .pass                (alu_lbist_pass),
+        .fail                (alu_lbist_fail),
+
+        .signature           (alu_lbist_signature),
+
+        .test_operand_a      (alu_lbist_a),
+        .test_operand_b      (alu_lbist_b),
+        .test_alu_op         (alu_lbist_op)
     );
 
     rv32i_branch_unit branch_unit (

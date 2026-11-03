@@ -1,7 +1,8 @@
 import rv32i_types::*;
 
 module rv32i_alu_lbist #(
-parameter logic [31:0] GOLDEN_SIGNATURE = 32'h6A86_A2B4)
+parameter logic [31:0] GOLDEN_SIGNATURE = 32'h6A86_A2B4,
+parameter bit USE_EXTERNAL_ALU = 1'b0)
 (
     input  logic clk,
     input  logic reset,
@@ -9,13 +10,18 @@ parameter logic [31:0] GOLDEN_SIGNATURE = 32'h6A86_A2B4)
     input  logic inject_fault,
     input logic [4:0] fault_bit,
     input logic fault_stuck_at,
+    input logic [31:0] external_alu_result,
 
     output logic busy,
     output logic done,
     output logic pass,
     output logic fail,
 
-    output logic [31:0] signature
+    output logic [31:0] signature,
+
+    output logic [31:0] test_operand_a,
+    output logic [31:0] test_operand_b,
+    output alu_op_t     test_alu_op
 );
 
 logic [31:0] lfsr_value;
@@ -26,6 +32,7 @@ logic [31:0] operand_a;
 logic [31:0] operand_b;
 logic [31:0] alu_result;
 logic [31:0] misr_data;
+logic [31:0] internal_alu_result;
 
 
 alu_op_t alu_op;
@@ -63,8 +70,16 @@ rv32i_alu alu_dut (
     .operand_a (operand_a),
     .operand_b (operand_b),
     .alu_op    (alu_op),
-    .result    (alu_result)
+    .result (internal_alu_result)
 );
+
+assign test_operand_a = operand_a;
+assign test_operand_b = operand_b;
+assign test_alu_op    = alu_op;
+
+assign alu_result = USE_EXTERNAL_ALU
+                  ? external_alu_result
+                  : internal_alu_result;
 
 misr32 response_compactor (
     .clk       (clk),
