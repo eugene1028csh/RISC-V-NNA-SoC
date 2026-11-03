@@ -3,6 +3,8 @@ import rv32i_types::*;
 module rv32i_core (
     input logic clk,
     input logic reset,
+    input  logic nna_boot_pass_i,
+    output logic core_dft_ready_o,
 
     //mmio ports
     output logic [31:0] bus_addr,
@@ -14,7 +16,10 @@ module rv32i_core (
     
     // MBIST status
     output logic        mbist_pass_o,
-    output logic        mbist_fail_o
+    output logic        mbist_fail_o,
+
+    output logic alu_lbist_pass_o,
+    output logic crc_lbist_pass_o
     
 );
     logic [31:0] pc;
@@ -293,11 +298,17 @@ module rv32i_core (
 
     assign dmem_we_mux =
         mbist_busy ? mbist_mem_we : cpu_dmem_we;
+    
+    assign alu_lbist_pass_o = alu_lbist_boot_pass;
+    assign crc_lbist_pass_o = crc_lbist_boot_pass;
 
-    assign cpu_enable =
+    assign core_dft_ready_o =
         mbist_boot_pass &&
         alu_lbist_boot_pass &&
         crc_lbist_boot_pass;
+
+    assign cpu_enable =
+        core_dft_ready_o && nna_boot_pass_i;
 
     assign cpu_reset = reset || !cpu_enable;
 

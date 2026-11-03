@@ -26,7 +26,9 @@ rv32i_core dut (
     .bus_hit(1'b0),
 
     .mbist_pass_o(mbist_pass_o),
-    .mbist_fail_o(mbist_fail_o)
+    .mbist_fail_o(mbist_fail_o),
+    .nna_boot_pass_i(1'b1),
+    .core_dft_ready_o()
 );
 
 initial begin
