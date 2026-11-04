@@ -25,6 +25,8 @@ module rv32i_core_bisr_repair_boot_tb;
         .clk            (clk),
         .reset          (reset),
 
+        .nna_boot_pass_i(1'b1),
+
         .bus_addr       (bus_addr),
         .bus_write_data (bus_write_data),
         .bus_write_en   (bus_write_en),
@@ -165,6 +167,7 @@ module rv32i_core_bisr_repair_boot_tb;
         $display(
             "TEST PASSED: BISR repaired faulty DMEM word and CPU booted"
         );
+    #5000;  // Keep final results visible for another 1 us
     $finish;
 
     end

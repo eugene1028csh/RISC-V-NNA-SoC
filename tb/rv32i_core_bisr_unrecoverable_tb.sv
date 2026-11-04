@@ -26,6 +26,8 @@ module rv32i_core_bisr_unrecoverable_tb;
         .clk            (clk),
         .reset          (reset),
 
+        .nna_boot_pass_i(1'b1),
+
         .bus_addr       (bus_addr),
         .bus_write_data (bus_write_data),
         .bus_write_en   (bus_write_en),
@@ -181,6 +183,7 @@ module rv32i_core_bisr_unrecoverable_tb;
         $display(
         "TEST PASSED: second DMEM fault exceeded BISR repair capacity and CPU boot was blocked"
     );
+    #10000;  // Extend simulation by 10 us
     $finish;
 
     end

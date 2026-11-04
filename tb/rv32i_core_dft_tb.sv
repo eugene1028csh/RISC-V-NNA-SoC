@@ -32,6 +32,11 @@ rv32i_core dut (
 );
 
 initial begin
+    $dumpfile("docs/waveforms/cpu_dft.vcd");
+    $dumpvars(0, rv32i_core_dft_tb);
+end
+
+initial begin
     repeat (5) @(negedge clk);
     reset = 0;
 
@@ -89,6 +94,8 @@ initial begin
         $fatal(1, "CPU was not enabled");
 
     $display("CPU BOOT ENABLED");
+
+    #1000;  // Keep simulation running for another 1 us
     $finish;
 end
 
