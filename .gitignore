@@ -14,6 +14,12 @@ a.out
 # GHDL working library
 work-obj*.cf
 
+# Icarus Verilog compiled simulation files
+*.vvp
+
+# Local simulation/build directory
+/build/
+
 
 # ============================================================
 # Gowin generated files / implementation outputs

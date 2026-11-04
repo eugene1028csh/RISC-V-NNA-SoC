@@ -3,6 +3,8 @@ import rv32i_types::*;
 module rv32i_core (
     input logic clk,
     input logic reset,
+    input  logic nna_boot_pass_i,
+    output logic core_dft_ready_o,
 
     //mmio ports
     output logic [31:0] bus_addr,
@@ -14,7 +16,10 @@ module rv32i_core (
     
     // MBIST status
     output logic        mbist_pass_o,
-    output logic        mbist_fail_o
+    output logic        mbist_fail_o,
+
+    output logic alu_lbist_pass_o,
+    output logic crc_lbist_pass_o
     
 );
     logic [31:0] pc;
@@ -35,10 +40,35 @@ module rv32i_core (
     logic [31:0] alu_a;
     logic [31:0] alu_b;
     logic [31:0] alu_result;
+    logic        alu_lbist_mode;
+    logic [31:0] alu_lbist_a;
+    logic [31:0] alu_lbist_b;
+    alu_op_t     alu_lbist_op;
+    logic        alu_lbist_start;
+    logic        alu_lbist_busy;
+    logic        alu_lbist_done;
+    logic        alu_lbist_pass;
+    logic        alu_lbist_fail;
+    logic [31:0] alu_lbist_signature;
+    logic alu_lbist_started;
+    logic alu_lbist_boot_pass;
 
     logic [31:0] mem_read_data;
     logic [31:0] dmem_read_data;
     logic [31:0] crc_result;
+    logic        crc_lbist_mode;
+    logic        crc_lbist_start;
+    logic        crc_lbist_busy;
+    logic        crc_lbist_done;
+    logic        crc_lbist_pass;
+    logic        crc_lbist_fail;
+
+    logic [31:0] crc_lbist_signature;
+    logic crc_lbist_started;
+    logic crc_lbist_boot_pass;
+    logic [31:0] crc_lbist_rs1_data;
+    logic [31:0] crc_lbist_rs2_data;
+    logic [1:0]  crc_lbist_sel;
     logic        crc_ready;
     logic        crc_writeback;
     logic        crc_illegal;
@@ -73,6 +103,10 @@ module rv32i_core (
     logic        mbist_fail;
     logic [31:0] mbist_fail_addr;
 
+    logic       repair_valid; //spare mapping is active
+    logic [7:0] repair_addr; //which logical word gets redirected
+    logic       repair_attempted; //we've already consumed our one spare
+
     // Actual signals entering physical DMEM
     logic [31:0] dmem_addr_mux;
     logic [31:0] dmem_wdata_mux;
@@ -104,16 +138,52 @@ module rv32i_core (
     assign rd_addr  = instruction[11:7];
 
     xicrc_accelerator_unit xicrc_unit (
-        .ext_rs1_data   (rs1_data),
-        .ext_rs2_data   (rs2_data),
-        .ext_funct7     (instruction[31:25]),
-        .ext_funct3     (instruction[14:12]),
+        .ext_rs1_data (
+            crc_lbist_mode ? crc_lbist_rs1_data : rs1_data
+        ),
+        .ext_rs2_data (
+            crc_lbist_mode ? crc_lbist_rs2_data : rs2_data
+        ),
+        .ext_funct7 (
+            crc_lbist_mode ? 7'b1000000 : instruction[31:25]
+        ),
+        .ext_funct3 (
+            crc_lbist_mode ? {1'b0, crc_lbist_sel} : instruction[14:12]
+        ),
 
-        .ext_ready      (crc_ready),
-        .ext_result     (crc_result),
-        .ext_writeback  (crc_writeback),
-        .ext_illegal    (crc_illegal)
+        .ext_ready     (crc_ready),
+        .ext_result    (crc_result),
+        .ext_writeback (crc_writeback),
+        .ext_illegal   (crc_illegal)
     );
+
+    rv32i_xicrc_lbist #(
+        .USE_EXTERNAL_CRC(1'b1)
+    ) crc_lbist_inst (
+        .clk                 (clk),
+        .reset               (reset),
+        .start               (crc_lbist_start),
+
+        .inject_fault        (1'b0),
+        .fault_bit           (4'd0),
+        .fault_stuck_at      (1'b0),
+
+        .external_crc_result (crc_result[15:0]),
+
+        .busy                (crc_lbist_busy),
+        .done                (crc_lbist_done),
+        .pass                (crc_lbist_pass),
+        .fail                (crc_lbist_fail),
+
+        .signature           (crc_lbist_signature),
+
+        .test_rs1_data       (crc_lbist_rs1_data),
+        .test_rs2_data       (crc_lbist_rs2_data),
+        .test_crc_sel        (crc_lbist_sel)
+    );
+
+    assign crc_lbist_mode  = crc_lbist_busy;
+    assign crc_lbist_start = alu_lbist_boot_pass && !crc_lbist_started;
 
     //instantiating decoder
     rv32i_decoder decoder (
@@ -151,13 +221,39 @@ module rv32i_core (
 
     assign alu_a = alu_a_pc ? pc : rs1_data;
     assign alu_b = alu_src ? immediate : rs2_data;
-
+    assign alu_lbist_mode  = alu_lbist_busy;
+    assign alu_lbist_start = mbist_boot_pass && !alu_lbist_started;
 
     rv32i_alu alu (
-        .operand_a(alu_a),
-        .operand_b(alu_b),
-        .alu_op(alu_op),
-        .result(alu_result)
+        .operand_a(alu_lbist_mode ? alu_lbist_a : alu_a),
+        .operand_b(alu_lbist_mode ? alu_lbist_b : alu_b),
+        .alu_op   (alu_lbist_mode ? alu_lbist_op : alu_op),
+        .result   (alu_result)
+    );
+
+    rv32i_alu_lbist #(
+        .USE_EXTERNAL_ALU(1'b1)
+    ) alu_lbist_inst (
+        .clk                 (clk),
+        .reset               (reset),
+        .start               (alu_lbist_start),
+
+        .inject_fault        (1'b0),
+        .fault_bit           (5'd0),
+        .fault_stuck_at      (1'b0),
+
+        .external_alu_result (alu_result),
+
+        .busy                (alu_lbist_busy),
+        .done                (alu_lbist_done),
+        .pass                (alu_lbist_pass),
+        .fail                (alu_lbist_fail),
+
+        .signature           (alu_lbist_signature),
+
+        .test_operand_a      (alu_lbist_a),
+        .test_operand_b      (alu_lbist_b),
+        .test_alu_op         (alu_lbist_op)
     );
 
     rv32i_branch_unit branch_unit (
@@ -185,7 +281,10 @@ module rv32i_core (
         .addr(dmem_addr_mux),
         .write_data(dmem_wdata_mux),
 
-        .read_data(dmem_read_data)
+        .read_data(dmem_read_data),
+
+        .repair_addr  (repair_addr),
+        .repair_valid (repair_valid)
     );
 
     assign cpu_dmem_addr  = alu_result;
@@ -199,8 +298,17 @@ module rv32i_core (
 
     assign dmem_we_mux =
         mbist_busy ? mbist_mem_we : cpu_dmem_we;
+    
+    assign alu_lbist_pass_o = alu_lbist_boot_pass;
+    assign crc_lbist_pass_o = crc_lbist_boot_pass;
 
-    assign cpu_enable = mbist_boot_pass;
+    assign core_dft_ready_o =
+        mbist_boot_pass &&
+        alu_lbist_boot_pass &&
+        crc_lbist_boot_pass;
+
+    assign cpu_enable =
+        core_dft_ready_o && nna_boot_pass_i;
 
     assign cpu_reset = reset || !cpu_enable;
 
@@ -224,6 +332,8 @@ module rv32i_core (
         .mem_rdata (dmem_read_data),
 
         .fail_addr (mbist_fail_addr)
+
+        
     );
 
     always_ff @(posedge clk) begin
@@ -232,12 +342,16 @@ module rv32i_core (
             mbist_started   <= 1'b0;
             mbist_boot_pass <= 1'b0;
 
+            repair_valid     <= 1'b0;
+            repair_addr      <= '0;
+            repair_attempted <= 1'b0;
+
         end else begin
 
             // Default: START is only a one-clock pulse
             mbist_start <= 1'b0;
 
-            // Launch MBIST once after reset
+            // Initial POR
             if (!mbist_started) begin
                 mbist_start   <= 1'b1;
                 mbist_started <= 1'b1;
@@ -247,6 +361,49 @@ module rv32i_core (
             if (mbist_done && mbist_pass) begin
                 mbist_boot_pass <= 1'b1;
             end
+
+            //firts MBISt failure
+            //allocates 1 spare and reruns mbist when fail
+            else if (mbist_done && mbist_fail && !repair_attempted) begin
+                repair_addr <= mbist_fail_addr[9:2];
+                repair_valid <= 1'b1;
+                repair_attempted <= 1'b1;
+
+                //run mbist agin through rpaired mapping
+                mbist_start <= 1'b1;
+            end
+
+            //if retest fails, no more spares left
+            else if (mbist_done && mbist_fail && repair_attempted)
+                mbist_boot_pass <= 1'b0;
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (reset) begin
+            alu_lbist_started   <= 1'b0;
+            alu_lbist_boot_pass <= 1'b0;
+        end
+        else begin
+            if (alu_lbist_start)
+                alu_lbist_started <= 1'b1;
+
+            if (alu_lbist_done && alu_lbist_pass)
+                alu_lbist_boot_pass <= 1'b1;
+        end
+    end
+
+    always_ff @(posedge clk) begin
+        if (reset) begin
+            crc_lbist_started   <= 1'b0;
+            crc_lbist_boot_pass <= 1'b0;
+        end
+        else begin
+            if (crc_lbist_start)
+                crc_lbist_started <= 1'b1;
+
+            if (crc_lbist_done && crc_lbist_pass)
+                crc_lbist_boot_pass <= 1'b1;
         end
     end
 

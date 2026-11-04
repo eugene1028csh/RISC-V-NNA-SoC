@@ -6,11 +6,29 @@ module rv32i_alu (
     input alu_op_t alu_op,
     output logic [31:0] result
 );
+logic [4:0] add_low;
+logic [27:0] add_high;
+logic [31:0] add_result;
+
+assign add_low =
+    {1'b0, operand_a[3:0]} +
+    {1'b0, operand_b[3:0]};
+
+wire carry_into_bit4;
+
+assign carry_into_bit4 = add_low[4];
+
+assign add_high =
+    operand_a[31:4] +
+    operand_b[31:4] +
+    carry_into_bit4;
+
+assign add_result = {add_high, add_low[3:0]};
 
 //always_comb means this block describes a combinational logic
 always_comb begin
     case(alu_op)
-        ALU_ADD: result = operand_a + operand_b;
+        ALU_ADD: result = add_result;
         ALU_SUB: result = operand_a - operand_b;
         ALU_AND: result = operand_a & operand_b;
         ALU_OR: result = operand_a | operand_b;
