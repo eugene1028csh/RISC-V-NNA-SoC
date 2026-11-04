@@ -158,11 +158,11 @@ The SoC was implemented on the **Sipeed Tang Nano 20K**. The six onboard LEDs ar
 
 **Healthy configuration:** heartbeat blinks, and LEDs 1–5 indicate pass.
 
-![Tang Nano 20K: healthy boot](docs/hardware/fpga_healthy2.jpeg)
+![Tang Nano 20K: healthy boot](docs/hardware/fpga_healthy.png)
 
 **Fault-injected configuration:** a deliberate readback modification flips one bit of **NNA output 7** during the NNA BIST check. LED0 continues blinking and LEDs 1–3 indicate the earlier tests passed, but LEDs 4–5 do not indicate pass. This demonstrates **boot blocking on a detected accelerator error**; it is a controlled RTL fault-injection build, not a physical chip defect.
 
-![Tang Nano 20K: fault-injected boot](docs/hardware/fpga_fault_injected2.jpeg)
+![Tang Nano 20K: fault-injected boot](docs/hardware/fpga_fault_injected.png)
 
 The onboard **S1 / KEY1** button is an active-high reset input. Holding it clears the pass indications; releasing it reruns the boot tests.
 
