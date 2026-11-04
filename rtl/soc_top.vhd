@@ -150,7 +150,7 @@ begin
   end process;
 
   -- synthesis translate_on
-  reset_i <= not reset;
+  reset_i <= reset;
 
   -- Before NNA BIST passes, BIST owns the MMIO bus.
   -- After passing, ownership transfers to the CPU.
@@ -464,15 +464,12 @@ begin
     else
     '0';
 
-  led_n(0) <= not system_pass;
-  led_n(1) <= not heartbeat_counter(23);
-  led_n(2) <= '0' when mmio_counter /= 0 else
-  '1';
-  led_n(3) <= not seen_done;
-  led_n(4) <= not mbist_pass;
-  led_n(5) <= not (
-  error_latched
-  or mbist_fail
-  or nna_bist_fault_latched
-  );
+  -- Active-low LEDs: 0 = ON, 1 = OFF
+  led_n(0) <= not heartbeat_counter(23); -- Clock heartbeat
+  led_n(1) <= not mbist_pass; -- Memory BIST
+  led_n(2) <= not alu_lbist_pass; -- ALU LBIST
+  led_n(3) <= not crc_lbist_pass; -- XiCRC LBIST
+  led_n(4) <= not nna_bist_boot_pass; -- NNA BIST
+  led_n(5) <= not system_pass; -- CPU application
+
 end architecture;

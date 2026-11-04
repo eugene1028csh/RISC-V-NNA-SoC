@@ -9,7 +9,7 @@ end entity;
 architecture sim of soc_top_fault_tb is
 
     signal clk   : std_logic := '0';
-    signal reset : std_logic := '0';
+    signal reset : std_logic := '1';
     signal led_n : std_logic_vector(5 downto 0);
 
 begin
@@ -31,29 +31,31 @@ begin
         -- External reset is active LOW
         wait until falling_edge(clk);
         wait until falling_edge(clk);
-        reset <= '1';
+        reset <= '0';
 
-        -- Wait for simulated CPU self-tests
-        wait until led_n(4) = '0' for 1 us;
+        
+        -- Wait for simulated CPU DFT tests
+        wait until led_n(3) = '0' for 1 us;
 
-        assert led_n(4) = '0'
+        assert led_n(1) = '0' and
+               led_n(2) = '0' and
+               led_n(3) = '0'
             report "CPU DFT READY TIMEOUT"
             severity failure;
 
-        report "PASS: CPU SELF-TEST STUB READY";
+        report "PASS: CPU SELF-TESTS COMPLETE";
 
-        -- Wait for NNA BIST failure to be latched
-        wait until led_n(5) = '0' for 10 us;
+        -- Allow sufficient time for NNA BIST to finish
+        wait for 2 us;
 
-        assert led_n(5) = '0'
-            report "NNA FAULT WAS NOT LATCHED"
+        -- Faulty NNA must not receive a PASS
+        assert led_n(4) = '1'
+            report "FAULTY NNA INCORRECTLY PASSED BIST"
             severity failure;
 
-        report "PASS: NNA BIST FAULT LATCHED";
-
-        -- CPU must not reach its post-boot NNA read
-        assert led_n(3) = '1'
-            report "CPU ACCESSED NNA DESPITE BIST FAILURE"
+        -- Application must not report success
+        assert led_n(5) = '1'
+            report "APPLICATION INCORRECTLY REPORTED PASS"
             severity failure;
 
         -- Check again after additional clock cycles
@@ -61,16 +63,13 @@ begin
             wait until rising_edge(clk);
         end loop;
 
-        assert led_n(3) = '1'
-            report "CPU WAS RELEASED AFTER NNA BIST FAILURE"
+        assert led_n(4) = '1'
+            report "NNA BOOT PERMISSION INCORRECTLY ASSERTED"
             severity failure;
 
-        assert led_n(0) = '1'
-            report "SYSTEM INCORRECTLY REPORTED PASS"
-            severity failure;
-
-        report "PASS: CPU BOOT BLOCKED AFTER NNA FAULT";
-        report "PASS: SOC NEGATIVE BOOT TEST VERIFIED";
+        report "PASS: NNA BIST DID NOT PASS";
+        report "PASS: APPLICATION DID NOT REPORT SUCCESS";
+        report "PASS: SOC NEGATIVE DFT TEST VERIFIED";
 
         stop;
         wait;

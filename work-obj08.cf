@@ -1,7 +1,7 @@
 v 4
-file . ".\tb\soc_top_boot_tb.vhd" "328b7747a072116c9f3c7f5253886411136b05a4" "20261104183757.104":
-  entity soc_top_boot_tb at 1( 0) + 0 on 109;
-  architecture sim of soc_top_boot_tb at 8( 107) + 0 on 110;
+file . ".\tb\soc_top_boot_tb.vhd" "d2a9992bc251d3bc7500f2d7287ef321d0872664" "20261104192857.988":
+  entity soc_top_boot_tb at 1( 0) + 0 on 135;
+  architecture sim of soc_top_boot_tb at 8( 107) + 0 on 136;
 file / "C:\Users\eugen\OneDrive\Documents\RISC-V-NNA-SoC\rtl\nna\weight_buffer_16.vhd" "371a45d4292e56b83bd6524bf149c726b64e68f3" "20261103230639.958":
   entity weight_buffer_16 at 1( 0) + 0 on 11;
   architecture rtl of weight_buffer_16 at 21( 486) + 0 on 12;
@@ -77,12 +77,12 @@ file / "C:\Users\eugen\OneDrive\Documents\RISC-V-NNA-SoC\tb\nna_mmio_wrapper_tb.
 file / "C:\Users\eugen\OneDrive\Documents\RISC-V-NNA-SoC\dft\nna_bist_ctrl.vhd" "d67cdce6e6274b383a1f3722739788d7c08f2535" "20261103230639.958":
   entity nna_bist_ctrl at 1( 0) + 0 on 33;
   architecture rtl of nna_bist_ctrl at 26( 657) + 0 on 34;
-file . ".\tb\rv32i_core_stub.vhd" "9ea48af46a1a8ba978539016bd1ebb6bc8d90b0c" "20261104183757.063":
-  entity rv32i_core at 1( 0) + 0 on 105;
-  architecture sim_stub of rv32i_core at 25( 683) + 0 on 106;
-file . ".\tb\soc_top_fault_tb.vhd" "93d1c838cf09511846b4737cb8c5f882deb5fd4e" "20261104183757.111":
-  entity soc_top_fault_tb at 2( 2) + 0 on 111;
-  architecture sim of soc_top_fault_tb at 9( 110) + 0 on 112;
-file . ".\rtl\soc_top.vhd" "cc7489579089803110beebe66dff1470bacd71a2" "20261104183757.089":
-  entity soc_top at 1( 0) + 0 on 107;
-  architecture rtl of soc_top at 17( 312) + 0 on 108;
+file . ".\tb\rv32i_core_stub.vhd" "9ea48af46a1a8ba978539016bd1ebb6bc8d90b0c" "20261104192857.984":
+  entity rv32i_core at 1( 0) + 0 on 131;
+  architecture sim_stub of rv32i_core at 25( 683) + 0 on 132;
+file . ".\tb\soc_top_fault_tb.vhd" "b63bedc4c832c4e8650ae6b0b264133cd9e6a3d0" "20261104192857.988":
+  entity soc_top_fault_tb at 2( 2) + 0 on 137;
+  architecture sim of soc_top_fault_tb at 9( 110) + 0 on 138;
+file . ".\rtl\soc_top.vhd" "60c682aa18d94e8aebe9abeb6d0a64dfb4727aaf" "20261104192857.987":
+  entity soc_top at 1( 0) + 0 on 133;
+  architecture rtl of soc_top at 17( 312) + 0 on 134;
