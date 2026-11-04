@@ -71,6 +71,8 @@ begin
         report "PASS: APPLICATION DID NOT REPORT SUCCESS";
         report "PASS: SOC NEGATIVE DFT TEST VERIFIED";
 
+        -- Keep simulation running to show stable final DFT status
+        wait for 100 ns;
         stop;
         wait;
     end process;

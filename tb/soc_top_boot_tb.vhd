@@ -59,6 +59,8 @@ begin
             wait until rising_edge(clk);
         end loop;
 
+        -- Keep simulation running to show stable final DFT status
+        wait for 100 ns;
         stop;
         wait;
     end process;
